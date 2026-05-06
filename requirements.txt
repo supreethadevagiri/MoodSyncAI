@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────
+# MoodSyncAI – requirements.txt
+# Install everything with:  pip install -r requirements.txt
+# ─────────────────────────────────────────────
+
+# UI Framework
+gradio==4.44.0
+
+# Face Emotion Detection (CNN - no training needed, pretrained models inside)
+deepface==0.0.93
+fer==22.5.1
+
+# Deep Learning backend (needed by deepface)
+tensorflow==2.15.0
+tf-keras==2.15.1
+
+# Text Sentiment (RoBERTa Transformer)
+transformers==4.40.0
+torch==2.2.2
+torchvision==0.17.2
+
+# Grad-CAM (Attention Visualisation)
+grad-cam==1.5.0
+
+# Image processing
+Pillow==10.3.0
+opencv-python==4.9.0.80
+numpy==1.26.4
+
+# Hugging Face hub (for downloading models)
+huggingface-hub==0.22.2
+
+# Utilities
+matplotlib==3.8.4
+scipy==1.13.0
