@@ -4,8 +4,8 @@ fer==22.5.1
 tensorflow==2.20.0
 tf-keras==2.20.0
 transformers==4.40.0
-torch==2.2.2
-torchvision==0.17.2
+torch==2.5.1
+torchvision==0.20.1
 grad-cam==1.5.0
 Pillow==10.3.0
 opencv-python==4.9.0.80
