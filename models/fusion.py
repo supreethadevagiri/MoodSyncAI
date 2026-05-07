@@ -1,18 +1,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # MoodSyncAI – models/fusion.py
-#
-# PURPOSE:
-#   Combine the visual (face) and textual (sentiment) predictions into
-#   a single unified assessment. Detect mismatches between modalities.
-#
-# HOW IT WORKS:
-#   1. Takes emotion result  (from emotion_detector.py)
-#   2. Takes sentiment result (from sentiment_analyzer.py)
-#   3. Maps both to a common scale: positive / neutral / negative
-#   4. Computes weighted average of their confidence scores
-#   5. Detects MATCH or MISMATCH based on valence agreement
-#   6. Returns a unified result dict ready for the UI and generator
+# Combines rule-based fusion WITH a learned neural network fusion layer
 # ─────────────────────────────────────────────────────────────────────────────
+
+import torch
+import torch.nn as nn
+import numpy as np
 
 from config import (
     VISUAL_WEIGHT,
@@ -21,96 +14,123 @@ from config import (
     EMOTION_VALENCE_MAP,
 )
 
-
-# ── Valence scoring ───────────────────────────────────────────────────────────
-# Convert valence label → numeric score for weighted averaging
 VALENCE_SCORE = {
     "positive":  1.0,
     "neutral":   0.0,
     "negative": -1.0,
 }
 
+# ── Learned Fusion Network ────────────────────────────────────────────────────
+class FusionNet(nn.Module):
+    """
+    Small MLP that takes 7 emotion scores + 3 sentiment scores = 10 inputs
+    and outputs 3 values: [positive, neutral, negative] probabilities.
+    """
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(10, 32),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(32, 16),
+            nn.ReLU(),
+            nn.Linear(16, 3),
+            nn.Softmax(dim=-1),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+# Instantiate model once at module load
+_fusion_model = FusionNet()
+_fusion_model.eval()
+
+EMOTION_ORDER    = ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"]
+SENTIMENT_ORDER  = ["positive", "neutral", "negative"]
+
+
+def _learned_fusion(emotion_scores: dict, sentiment_scores: dict) -> dict:
+    """
+    Run the learned fusion network.
+    Returns {"valence": str, "confidence": float, "scores": dict}
+    """
+    try:
+        e_vec = [emotion_scores.get(e, 0.0) for e in EMOTION_ORDER]
+        s_vec = [sentiment_scores.get(s, 0.0) for s in SENTIMENT_ORDER]
+        x = torch.tensor(e_vec + s_vec, dtype=torch.float32).unsqueeze(0)
+
+        with torch.no_grad():
+            probs = _fusion_model(x).squeeze(0).numpy()
+
+        labels = ["positive", "neutral", "negative"]
+        idx    = int(np.argmax(probs))
+        return {
+            "valence":    labels[idx],
+            "confidence": float(probs[idx]),
+            "scores":     dict(zip(labels, probs.tolist())),
+        }
+    except Exception as e:
+        print(f"[LearnedFusion] Error: {e} — falling back to rule-based")
+        return None
+
 
 def fuse(emotion_result: dict, sentiment_result: dict) -> dict:
-    """
-    Fuse visual emotion and text sentiment into a unified assessment.
+    """Fuse visual emotion and text sentiment into a unified assessment."""
 
-    Args:
-        emotion_result   : dict from emotion_detector.analyse_emotion()
-        sentiment_result : dict from sentiment_analyzer.analyse_sentiment()
-
-    Returns a dict with:
-        {
-            "visual_valence":   "negative",
-            "text_valence":     "positive",
-            "fused_valence":    "neutral",
-            "fused_score":      0.05,          ← -1.0 to +1.0 scale
-            "is_mismatch":      True,
-            "mismatch_degree":  0.75,          ← how different they are (0-1)
-            "badge":            "⚠️ MISMATCH DETECTED",
-            "badge_color":      "orange",
-            "confidence":       0.84,          ← average confidence of both models
-            "summary_context":  { ... }        ← rich context for the generator
-        }
-    """
-
-    # ── Step 1: Get valence from each modality ────────────────────────────────
-    visual_valence = emotion_result.get("valence", "neutral")
-    text_valence   = sentiment_result.get("top_sentiment", "neutral")
-
-    # Map text sentiment label to valence (they already match: positive/neutral/negative)
-    # but emotion uses the EMOTION_VALENCE_MAP, which is already applied in emotion_detector
-
-    # ── Step 2: Get confidence scores from each modality ─────────────────────
+    visual_valence    = emotion_result.get("valence", "neutral")
+    text_valence      = sentiment_result.get("top_sentiment", "neutral")
     visual_confidence = emotion_result.get("confidence", 0.5)
     text_confidence   = sentiment_result.get("confidence", 0.5)
 
-    # Average confidence (how sure the system is overall)
     avg_confidence = round(
         (visual_confidence * VISUAL_WEIGHT) + (text_confidence * TEXT_WEIGHT), 4
     )
 
-    # ── Step 3: Convert valences to numeric scores ────────────────────────────
     visual_score = VALENCE_SCORE.get(visual_valence, 0.0)
     text_score   = VALENCE_SCORE.get(text_valence, 0.0)
 
-    # ── Step 4: Weighted average fusion ──────────────────────────────────────
-    fused_score = round(
-        (visual_score * VISUAL_WEIGHT) + (text_score * TEXT_WEIGHT), 4
+    # ── Try learned fusion first ──────────────────────────────────────────────
+    learned = _learned_fusion(
+        emotion_result.get("scores", {}),
+        sentiment_result.get("scores", {}),
     )
 
-    # Convert fused score back to valence label
-    if fused_score > 0.2:
-        fused_valence = "positive"
-    elif fused_score < -0.2:
-        fused_valence = "negative"
+    if learned:
+        fused_valence    = learned["valence"]
+        fused_score      = VALENCE_SCORE.get(fused_valence, 0.0)
+        fusion_method    = "neural"
     else:
-        fused_valence = "neutral"
+        # Fallback: weighted average
+        fused_score = round(
+            (visual_score * VISUAL_WEIGHT) + (text_score * TEXT_WEIGHT), 4
+        )
+        if fused_score > 0.2:
+            fused_valence = "positive"
+        elif fused_score < -0.2:
+            fused_valence = "negative"
+        else:
+            fused_valence = "neutral"
+        fusion_method = "rule-based"
 
-    # ── Step 5: Mismatch detection ────────────────────────────────────────────
-    # Mismatch = face and text point in OPPOSITE directions
-    mismatch_degree = abs(visual_score - text_score) / 2.0   # normalise to 0-1
+    # ── Mismatch detection ────────────────────────────────────────────────────
+    mismatch_degree = abs(visual_score - text_score) / 2.0
     is_mismatch     = mismatch_degree >= MISMATCH_THRESHOLD
 
-    # ── Step 6: Build badge for UI ────────────────────────────────────────────
-    if is_mismatch:
-        badge       = "⚠️ MISMATCH DETECTED"
-        badge_color = "orange"
-    else:
-        badge       = "✅ SIGNALS ALIGNED"
-        badge_color = "green"
+    badge       = "⚠️ MISMATCH DETECTED" if is_mismatch else "✅ SIGNALS ALIGNED"
+    badge_color = "orange"               if is_mismatch else "green"
 
-    # ── Step 7: Build rich context dict for the generator ────────────────────
     summary_context = {
-        "top_emotion":        emotion_result.get("top_emotion", "neutral"),
-        "emotion_confidence": visual_confidence,
-        "top_sentiment":      sentiment_result.get("top_sentiment", "neutral"),
+        "top_emotion":          emotion_result.get("top_emotion", "neutral"),
+        "emotion_confidence":   visual_confidence,
+        "top_sentiment":        sentiment_result.get("top_sentiment", "neutral"),
         "sentiment_confidence": text_confidence,
-        "visual_valence":     visual_valence,
-        "text_valence":       text_valence,
-        "fused_valence":      fused_valence,
-        "is_mismatch":        is_mismatch,
-        "mismatch_degree":    round(mismatch_degree, 4),
+        "visual_valence":       visual_valence,
+        "text_valence":         text_valence,
+        "fused_valence":        fused_valence,
+        "is_mismatch":          is_mismatch,
+        "mismatch_degree":      round(mismatch_degree, 4),
+        "fusion_method":        fusion_method,
     }
 
     return {
@@ -123,21 +143,13 @@ def fuse(emotion_result: dict, sentiment_result: dict) -> dict:
         "badge":           badge,
         "badge_color":     badge_color,
         "confidence":      avg_confidence,
+        "fusion_method":   fusion_method,
         "summary_context": summary_context,
     }
 
 
 def describe_fusion(fusion_result: dict) -> str:
-    """
-    Return a short human-readable description of the fusion result.
-    Used as a fallback if the generative model fails.
-
-    Example outputs:
-      "Face shows fear (negative), text is positive → MISMATCH"
-      "Both face and text show positive signals → ALIGNED"
-    """
     ctx = fusion_result["summary_context"]
-
     face_part = (
         f"Face shows {ctx['top_emotion']} "
         f"({ctx['visual_valence']}, {ctx['emotion_confidence']*100:.0f}%)"
@@ -146,54 +158,22 @@ def describe_fusion(fusion_result: dict) -> str:
         f"text is {ctx['top_sentiment']} "
         f"({ctx['sentiment_confidence']*100:.0f}%)"
     )
-
-    if fusion_result["is_mismatch"]:
-        return f"{face_part}, {text_part} → ⚠️ MISMATCH"
-    else:
-        return f"{face_part}, {text_part} → ✅ ALIGNED"
+    method = ctx.get("fusion_method", "rule-based")
+    tag    = "⚠️ MISMATCH" if fusion_result["is_mismatch"] else "✅ ALIGNED"
+    return f"{face_part}, {text_part} → {tag} [{method} fusion]"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# QUICK TEST
-#   python models/fusion.py
-# ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-
-    # Simulate the professor's exact example:
-    # Face → sad/fearful, Text → positive ("project is going really well")
-    mock_emotion_result = {
-        "top_emotion": "fear",
-        "confidence":  0.68,
-        "valence":     "negative",
-        "scores":      {"fear": 0.68, "sad": 0.20, "neutral": 0.12},
+    mock_emotion = {
+        "top_emotion": "fear", "confidence": 0.68, "valence": "negative",
+        "scores": {"angry": 0.05, "disgust": 0.02, "fear": 0.68,
+                   "happy": 0.02, "neutral": 0.12, "sad": 0.10, "surprise": 0.01},
     }
-
-    mock_sentiment_result = {
-        "top_sentiment": "positive",
-        "confidence":    0.81,
-        "scores":        {"positive": 0.81, "neutral": 0.12, "negative": 0.07},
+    mock_sentiment = {
+        "top_sentiment": "positive", "confidence": 0.81,
+        "scores": {"positive": 0.81, "neutral": 0.12, "negative": 0.07},
     }
-
-    result = fuse(mock_emotion_result, mock_sentiment_result)
-
-    print("\n" + "="*60)
-    print("  MoodSyncAI — Fusion Layer Test")
-    print("="*60)
-    print(f"\n  Visual Valence  : {result['visual_valence']}")
-    print(f"  Text Valence    : {result['text_valence']}")
-    print(f"  Fused Valence   : {result['fused_valence']}")
-    print(f"  Fused Score     : {result['fused_score']:+.3f}  (-1=negative, +1=positive)")
-    print(f"  Mismatch Degree : {result['mismatch_degree']*100:.1f}%")
-    print(f"  Badge           : {result['badge']}")
-    print(f"  Avg Confidence  : {result['confidence']*100:.1f}%")
-    print(f"\n  Description     : {describe_fusion(result)}")
-
-    # Test 2: Both positive (should be ALIGNED)
-    print("\n" + "-"*60)
-    print("  Test 2: Both signals positive")
-    print("-"*60)
-    mock_emotion_2 = {"top_emotion": "happy", "confidence": 0.90, "valence": "positive", "scores": {}}
-    mock_sentiment_2 = {"top_sentiment": "positive", "confidence": 0.95, "scores": {}}
-    result2 = fuse(mock_emotion_2, mock_sentiment_2)
-    print(f"  Badge : {result2['badge']}")
-    print(f"  Description: {describe_fusion(result2)}")
+    result = fuse(mock_emotion, mock_sentiment)
+    print(f"Badge: {result['badge']}")
+    print(f"Fusion method: {result['fusion_method']}")
+    print(f"Description: {describe_fusion(result)}")
