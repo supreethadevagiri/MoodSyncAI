@@ -10,6 +10,7 @@ from models.emotion_detector import analyse_emotion
 from models.sentiment_analyzer import analyse_sentiment
 from models.fusion import fuse, describe_fusion
 from models.generator import generate_summary
+from models.audio_transcriber import transcribe_audio
 from utils.helpers import make_bar_chart, format_confidence
 from utils.gradcam import generate_gradcam
 from config import APP_TITLE, APP_DESCRIPTION
@@ -18,16 +19,32 @@ from config import APP_TITLE, APP_DESCRIPTION
 _history: list[dict] = []
 
 
-def analyse(image, text):
-    """Full multimodal analysis pipeline."""
+def analyse(image, text, audio):
+    """
+    Full multimodal analysis pipeline.
+    Supports 3 input modes:
+      - image + text         (original 2-modal)
+      - image + audio        (Whisper transcribes → text, then same pipeline)
+      - image + text + audio (text takes priority; transcript shown separately)
+    """
 
     if image is None:
         msg = "Please upload a face photo."
-        return None, msg, None, msg, msg, msg, None, _render_history()
+        return None, msg, None, msg, msg, msg, None, _render_history(), ""
+
+    # ── Audio transcription (if audio provided and text box is empty) ─────────
+    transcript_display = ""
+    if audio is not None:
+        transcription = transcribe_audio(audio)
+        if transcription["error"] is None and transcription["transcript"]:
+            transcript_display = transcription["transcript"]
+            # Only override text if the user left the text box empty
+            if not text or not text.strip():
+                text = transcript_display
 
     if not text or not text.strip():
-        msg = "Please enter some text."
-        return None, msg, None, msg, msg, msg, None, _render_history()
+        msg = "Please type text OR upload an audio clip."
+        return None, msg, None, msg, msg, msg, None, _render_history(), ""
 
     # Step 1: Visual emotion
     emotion_result = analyse_emotion(image)
@@ -69,11 +86,13 @@ def analyse(image, text):
     gradcam_image = generate_gradcam(image, emotion_result["top_emotion"])
 
     # Step 6: Update history
+    source = "🎙️ audio" if (audio is not None and transcript_display) else "✍️ text"
     _history.insert(0, {
-        "text": text[:40] + ("…" if len(text) > 40 else ""),
-        "emotion": emotion_result["display_label"],
+        "text":      text[:40] + ("…" if len(text) > 40 else ""),
+        "source":    source,
+        "emotion":   emotion_result["display_label"],
         "sentiment": sentiment_result["display_label"],
-        "result": "⚠️ Mismatch" if "MISMATCH" in badge else "✅ Aligned",
+        "result":    "⚠️ Mismatch" if "MISMATCH" in badge else "✅ Aligned",
     })
     if len(_history) > 3:
         _history.pop()
@@ -87,6 +106,7 @@ def analyse(image, text):
         summary,
         gradcam_image,
         _render_history(),
+        transcript_display,
     )
 
 
@@ -94,24 +114,19 @@ def _render_history() -> str:
     """Render the last 3 analyses as a markdown table."""
     if not _history:
         return "_No analyses yet. Run your first analysis above!_"
-    rows = ["| # | Text | Emotion | Sentiment | Result |",
-            "|---|------|---------|-----------|--------|"]
+    rows = ["| # | Text | Source | Emotion | Sentiment | Result |",
+            "|---|------|--------|---------|-----------|--------|"]
     for i, h in enumerate(_history, 1):
         rows.append(
-            f"| {i} | {h['text']} | {h['emotion']} | {h['sentiment']} | {h['result']} |"
+            f"| {i} | {h['text']} | {h['source']} | {h['emotion']} | {h['sentiment']} | {h['result']} |"
         )
     return "\n".join(rows)
-
-
-def load_example(text: str):
-    """Fill the text box when an example button is clicked."""
-    return text
 
 
 # ── Example presets ───────────────────────────────────────────────────────────
 EXAMPLES = [
     {
-        "label": "😊 Happy text (classic mismatch test)",
+        "label": "😊 Happy text",
         "text": "I am so happy today, everything is going great!",
     },
     {
@@ -126,14 +141,12 @@ EXAMPLES = [
 
 # ── Custom CSS ────────────────────────────────────────────────────────────────
 CUSTOM_CSS = """
-/* ── Global font & base ────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap');
 
 body, .gradio-container {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* ── Header banner ─────────────────────────────────── */
 .mood-header {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     border-radius: 16px;
@@ -155,7 +168,6 @@ body, .gradio-container {
     line-height: 1.5;
 }
 
-/* ── Section labels ────────────────────────────────── */
 .section-label {
     font-size: 0.72rem !important;
     font-weight: 600 !important;
@@ -165,7 +177,6 @@ body, .gradio-container {
     margin-bottom: 10px !important;
 }
 
-/* ── Example buttons row ───────────────────────────── */
 .example-btn {
     font-size: 0.82rem !important;
     padding: 6px 14px !important;
@@ -182,7 +193,6 @@ body, .gradio-container {
     color: #1e1b4b !important;
 }
 
-/* ── Analyse button ────────────────────────────────── */
 button.lg.primary {
     background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
     border: none !important;
@@ -198,77 +208,113 @@ button.lg.primary:hover {
     box-shadow: 0 6px 20px rgba(99,102,241,0.45) !important;
 }
 
-/* ── Result cards ──────────────────────────────────── */
-.result-card {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 16px 20px;
-}
-
-/* ── Divider ───────────────────────────────────────── */
 .divider {
     border: none;
     border-top: 1px solid #e2e8f0;
     margin: 8px 0;
 }
 
-/* ── Badge textbox ─────────────────────────────────── */
 textarea[data-testid="textbox"] {
     font-family: 'DM Mono', monospace !important;
     font-size: 0.9rem !important;
 }
 
-/* ── History section ───────────────────────────────── */
 .history-section table {
     font-size: 0.85rem !important;
     width: 100%;
+}
+
+.audio-info {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    color: #166534;
+    margin-top: 6px;
 }
 """
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as demo:
 
-    # ── Header ──────────────────────────────────────────────────────────────
+    # ── Header ───────────────────────────────────────────────────────────────
     gr.HTML("""
     <div class="mood-header">
         <h1>🎭 MoodSyncAI</h1>
         <p>
             Multi-modal emotion &amp; sentiment analyser &nbsp;·&nbsp;
-            Upload a face photo, type what the person said, and detect hidden emotional mismatches.
+            Upload a face photo + type text <em>or</em> upload an audio clip
+            to detect hidden emotional mismatches.
         </p>
     </div>
     """)
 
     gr.HTML('<hr class="divider">')
 
-    # ── Input row ────────────────────────────────────────────────────────────
+    # ── Input row ─────────────────────────────────────────────────────────────
     with gr.Row():
+
+        # Left column — face photo
         with gr.Column(scale=1):
             image_input = gr.Image(
                 type="pil",
                 label="📷  Upload Face Photo",
                 height=300,
             )
+
+        # Right column — text OR audio (tabs)
         with gr.Column(scale=1):
-            text_input = gr.Textbox(
-                label="💬  What did the person say?",
-                placeholder="Type the sentence here…",
-                lines=5,
-            )
-            with gr.Row():
-                for ex in EXAMPLES:
-                    gr.Button(ex["label"], elem_classes=["example-btn"], size="sm").click(
-                        fn=lambda t=ex["text"]: t,
-                        inputs=[],
-                        outputs=[text_input],
-                        queue=False,
+            with gr.Tabs():
+
+                # Tab 1: typed text (original mode)
+                with gr.Tab("✍️  Type Text"):
+                    text_input = gr.Textbox(
+                        label="💬  What did the person say?",
+                        placeholder="Type the sentence here…",
+                        lines=4,
                     )
+                    gr.HTML('<p class="section-label" style="margin-top:8px">⚡ Quick examples</p>')
+                    with gr.Row():
+                        for ex in EXAMPLES:
+                            gr.Button(
+                                ex["label"],
+                                elem_classes=["example-btn"],
+                                size="sm",
+                            ).click(
+                                fn=lambda t=ex["text"]: t,
+                                inputs=[],
+                                outputs=[text_input],
+                                queue=False,
+                            )
+
+                # Tab 2: audio upload (new 3rd modality)
+                with gr.Tab("🎙️  Upload Audio"):
+                    audio_input = gr.Audio(
+                        type="filepath",
+                        label="Upload a short audio clip (wav / mp3 / m4a)",
+                    )
+                    gr.HTML("""
+                    <div class="audio-info">
+                        🎙️ <strong>How it works:</strong> Whisper AI automatically transcribes
+                        what is said in the clip. The transcript feeds into the same
+                        sentiment + fusion pipeline as typed text — giving you a
+                        <strong>3-modality analysis</strong> (face + voice + text).
+                        Max 30 seconds recommended.
+                    </div>
+                    """)
+                    transcript_out = gr.Textbox(
+                        label="📝 Auto-transcript (what Whisper heard)",
+                        interactive=False,
+                        lines=3,
+                        placeholder="Transcript appears here after analysis…",
+                    )
+
             analyse_btn = gr.Button("🔍  Analyse", variant="primary", size="lg")
 
     gr.HTML('<hr class="divider">')
 
-    # ── Results row ───────────────────────────────────────────────────────────
+    # ── Results ───────────────────────────────────────────────────────────────
     gr.HTML('<p class="section-label">📊 Analysis results</p>')
 
     with gr.Row():
@@ -292,7 +338,6 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as de
                 interactive=False,
                 lines=2,
             )
-
         with gr.Column(scale=2):
             gr.Markdown("#### 📝 Generative Summary")
             summary_out = gr.Textbox(
@@ -315,12 +360,15 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as de
 
     # ── History ───────────────────────────────────────────────────────────────
     gr.HTML('<p class="section-label">🕒 Recent analyses (this session)</p>')
-    history_out = gr.Markdown(value=_render_history(), elem_classes=["history-section"])
+    history_out = gr.Markdown(
+        value=_render_history(),
+        elem_classes=["history-section"],
+    )
 
-    # ── Wire the analyse button ───────────────────────────────────────────────
+    # ── Wire button ───────────────────────────────────────────────────────────
     analyse_btn.click(
         fn=analyse,
-        inputs=[image_input, text_input],
+        inputs=[image_input, text_input, audio_input],
         outputs=[
             emotion_chart_out,
             emotion_label_out,
@@ -330,6 +378,7 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as de
             summary_out,
             gradcam_out,
             history_out,
+            transcript_out,
         ],
     )
 

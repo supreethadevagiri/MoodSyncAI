@@ -13,3 +13,5 @@ numpy
 huggingface-hub
 matplotlib
 scipy
+openai-whisper
+librosa
