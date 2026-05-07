@@ -14,17 +14,20 @@ from utils.helpers import make_bar_chart, format_confidence
 from utils.gradcam import generate_gradcam
 from config import APP_TITLE, APP_DESCRIPTION
 
+# ── In-memory history (last 3 analyses) ──────────────────────────────────────
+_history: list[dict] = []
+
 
 def analyse(image, text):
     """Full multimodal analysis pipeline."""
 
     if image is None:
         msg = "Please upload a face photo."
-        return None, msg, None, msg, msg, msg, None
+        return None, msg, None, msg, msg, msg, None, _render_history()
 
     if not text or not text.strip():
         msg = "Please enter some text."
-        return None, msg, None, msg, msg, msg, None
+        return None, msg, None, msg, msg, msg, None, _render_history()
 
     # Step 1: Visual emotion
     emotion_result = analyse_emotion(image)
@@ -54,104 +57,267 @@ def analyse(image, text):
     fusion_result = fuse(emotion_result, sentiment_result)
     badge = fusion_result["badge"]
 
+    # Fusion method tag
+    method = fusion_result.get("method", "rule")
+    method_tag = "🧠 Neural Fusion" if method == "neural" else "📐 Rule-based Fusion"
+    badge_with_method = f"{badge}     [{method_tag}]"
+
     # Step 4: Summary
     summary = generate_summary(fusion_result)
 
     # Step 5: Grad-CAM
     gradcam_image = generate_gradcam(image, emotion_result["top_emotion"])
 
+    # Step 6: Update history
+    _history.insert(0, {
+        "text": text[:40] + ("…" if len(text) > 40 else ""),
+        "emotion": emotion_result["display_label"],
+        "sentiment": sentiment_result["display_label"],
+        "result": "⚠️ Mismatch" if "MISMATCH" in badge else "✅ Aligned",
+    })
+    if len(_history) > 3:
+        _history.pop()
+
     return (
         emotion_chart,
         emotion_label,
         sentiment_chart,
         sentiment_label,
-        badge,
+        badge_with_method,
         summary,
         gradcam_image,
+        _render_history(),
     )
 
 
-with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft()) as demo:
+def _render_history() -> str:
+    """Render the last 3 analyses as a markdown table."""
+    if not _history:
+        return "_No analyses yet. Run your first analysis above!_"
+    rows = ["| # | Text | Emotion | Sentiment | Result |",
+            "|---|------|---------|-----------|--------|"]
+    for i, h in enumerate(_history, 1):
+        rows.append(
+            f"| {i} | {h['text']} | {h['emotion']} | {h['sentiment']} | {h['result']} |"
+        )
+    return "\n".join(rows)
 
-    gr.Markdown("# MoodSyncAI")
-    gr.Markdown(
-        "**Multi-Modal Sentiment & Emotion Analyser**  \n"
-        "Upload a face photo and type what the person said. "
-        "The system analyses facial emotion, text sentiment, and detects any mismatch between them."
-    )
 
+def load_example(text: str):
+    """Fill the text box when an example button is clicked."""
+    return text
+
+
+# ── Example presets ───────────────────────────────────────────────────────────
+EXAMPLES = [
+    {
+        "label": "😊 Happy text (classic mismatch test)",
+        "text": "I am so happy today, everything is going great!",
+    },
+    {
+        "label": "😤 Dismissive colleague",
+        "text": "No, I think the project is going really well.",
+    },
+    {
+        "label": "😰 Anxious reassurance",
+        "text": "Everything is totally fine, I am not stressed at all.",
+    },
+]
+
+# ── Custom CSS ────────────────────────────────────────────────────────────────
+CUSTOM_CSS = """
+/* ── Global font & base ────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap');
+
+body, .gradio-container {
+    font-family: 'DM Sans', sans-serif !important;
+}
+
+/* ── Header banner ─────────────────────────────────── */
+.mood-header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: 16px;
+    padding: 28px 36px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.mood-header h1 {
+    font-size: 2.2rem !important;
+    font-weight: 600 !important;
+    color: #ffffff !important;
+    margin: 0 0 6px 0 !important;
+    letter-spacing: -0.5px;
+}
+.mood-header p {
+    color: #94a3b8 !important;
+    font-size: 0.95rem !important;
+    margin: 0 !important;
+    line-height: 1.5;
+}
+
+/* ── Section labels ────────────────────────────────── */
+.section-label {
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+    color: #64748b !important;
+    margin-bottom: 10px !important;
+}
+
+/* ── Example buttons row ───────────────────────────── */
+.example-btn {
+    font-size: 0.82rem !important;
+    padding: 6px 14px !important;
+    border-radius: 20px !important;
+    border: 1px solid #4f46e5 !important;
+    background: #eef2ff !important;
+    color: #3730a3 !important;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.example-btn:hover {
+    background: #c7d2fe !important;
+    border-color: #4f46e5 !important;
+    color: #1e1b4b !important;
+}
+
+/* ── Analyse button ────────────────────────────────── */
+button.lg.primary {
+    background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    box-shadow: 0 4px 14px rgba(99,102,241,0.35) !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+button.lg.primary:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(99,102,241,0.45) !important;
+}
+
+/* ── Result cards ──────────────────────────────────── */
+.result-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+/* ── Divider ───────────────────────────────────────── */
+.divider {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 8px 0;
+}
+
+/* ── Badge textbox ─────────────────────────────────── */
+textarea[data-testid="textbox"] {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.9rem !important;
+}
+
+/* ── History section ───────────────────────────────── */
+.history-section table {
+    font-size: 0.85rem !important;
+    width: 100%;
+}
+"""
+
+# ── UI ────────────────────────────────────────────────────────────────────────
+with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as demo:
+
+    # ── Header ──────────────────────────────────────────────────────────────
+    gr.HTML("""
+    <div class="mood-header">
+        <h1>🎭 MoodSyncAI</h1>
+        <p>
+            Multi-modal emotion &amp; sentiment analyser &nbsp;·&nbsp;
+            Upload a face photo, type what the person said, and detect hidden emotional mismatches.
+        </p>
+    </div>
+    """)
+
+    gr.HTML('<hr class="divider">')
+
+    # ── Input row ────────────────────────────────────────────────────────────
     with gr.Row():
         with gr.Column(scale=1):
             image_input = gr.Image(
                 type="pil",
-                label="Upload Face Photo",
+                label="📷  Upload Face Photo",
                 height=300,
             )
         with gr.Column(scale=1):
             text_input = gr.Textbox(
-                label="What did the person say?",
-                placeholder="Type the sentence here...",
-                lines=4,
+                label="💬  What did the person say?",
+                placeholder="Type the sentence here…",
+                lines=5,
             )
-            analyse_btn = gr.Button(
-                "Analyse",
-                variant="primary",
-                size="lg",
-            )
+            with gr.Row():
+                for ex in EXAMPLES:
+                    gr.Button(ex["label"], elem_classes=["example-btn"], size="sm").click(
+                        fn=lambda t=ex["text"]: t,
+                        inputs=[],
+                        outputs=[text_input],
+                        queue=False,
+                    )
+            analyse_btn = gr.Button("🔍  Analyse", variant="primary", size="lg")
 
-    gr.Markdown("---")
+    gr.HTML('<hr class="divider">')
 
-    with gr.Row():
-        with gr.Column(scale=1):
-            gr.Markdown("### Visual Emotion")
-            emotion_chart_out = gr.Image(
-                label="Emotion Confidence Chart",
-                height=280,
-            )
-            emotion_label_out = gr.Textbox(
-                label="Top Emotion",
-                interactive=False,
-            )
-
-        with gr.Column(scale=1):
-            gr.Markdown("### Textual Sentiment")
-            sentiment_chart_out = gr.Image(
-                label="Sentiment Confidence Chart",
-                height=280,
-            )
-            sentiment_label_out = gr.Textbox(
-                label="Top Sentiment",
-                interactive=False,
-            )
-
-    gr.Markdown("---")
+    # ── Results row ───────────────────────────────────────────────────────────
+    gr.HTML('<p class="section-label">📊 Analysis results</p>')
 
     with gr.Row():
         with gr.Column(scale=1):
-            gr.Markdown("### Fusion Result")
+            gr.Markdown("#### 👁️ Visual Emotion")
+            emotion_chart_out = gr.Image(label="Emotion Confidence Chart", height=260)
+            emotion_label_out = gr.Textbox(label="Top Emotion", interactive=False)
+
+        with gr.Column(scale=1):
+            gr.Markdown("#### 💬 Textual Sentiment")
+            sentiment_chart_out = gr.Image(label="Sentiment Confidence Chart", height=260)
+            sentiment_label_out = gr.Textbox(label="Top Sentiment", interactive=False)
+
+    gr.HTML('<hr class="divider">')
+
+    with gr.Row():
+        with gr.Column(scale=1):
+            gr.Markdown("#### 🔀 Fusion Result")
             badge_out = gr.Textbox(
-                label="Mismatch Detection",
+                label="Mismatch Detection + Fusion Method",
                 interactive=False,
+                lines=2,
             )
 
         with gr.Column(scale=2):
-            gr.Markdown("### Generative Summary")
+            gr.Markdown("#### 📝 Generative Summary")
             summary_out = gr.Textbox(
                 label="Emotional Assessment",
                 lines=4,
                 interactive=False,
             )
 
-    gr.Markdown("---")
+    gr.HTML('<hr class="divider">')
 
     with gr.Row():
         with gr.Column(scale=1):
-            gr.Markdown("### 🔥 Grad-CAM Attention Map")
+            gr.Markdown("#### 🔥 Grad-CAM Attention Map")
             gradcam_out = gr.Image(
-                label="Which face regions influenced the emotion prediction",
+                label="Face regions that influenced the emotion prediction",
                 height=300,
             )
 
+    gr.HTML('<hr class="divider">')
+
+    # ── History ───────────────────────────────────────────────────────────────
+    gr.HTML('<p class="section-label">🕒 Recent analyses (this session)</p>')
+    history_out = gr.Markdown(value=_render_history(), elem_classes=["history-section"])
+
+    # ── Wire the analyse button ───────────────────────────────────────────────
     analyse_btn.click(
         fn=analyse,
         inputs=[image_input, text_input],
@@ -163,12 +329,10 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft()) as demo:
             badge_out,
             summary_out,
             gradcam_out,
-        ]
+            history_out,
+        ],
     )
 
 
 if __name__ == "__main__":
-    demo.launch(
-        share=True,
-        debug=True,
-    )
+    demo.launch(share=True, debug=True)
