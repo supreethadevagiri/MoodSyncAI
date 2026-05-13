@@ -31,7 +31,7 @@ pinned: false
 MoodSyncAI takes up to three inputs and runs them through specialised AI models:
 
 ```
-📸 Face Image  →  CNN (DeepFace/FER)       →  Visual Emotion
+📸 Face Image / 📷 Webcam  →  CNN (DeepFace/FER)       →  Visual Emotion
 💬 Text Input  →  RoBERTa Transformer      →  Textual Sentiment
 🎙️ Audio Clip  →  Whisper → RoBERTa        →  Audio Sentiment
                         ↓
@@ -77,6 +77,7 @@ MoodSyncAI takes up to three inputs and runs them through specialised AI models:
 ## ✨ Features
 
 - 📸 **Image upload** — analyse facial emotion from any photo
+- 📷 **Webcam capture** — take a live snapshot directly from your camera for instant analysis
 - 💬 **Text input** — type or paste what the person said
 - 🎙️ **Audio upload** — upload a `.wav` / `.mp3` clip; Whisper auto-transcribes it
 - 🔀 **Multimodal fusion** — combines all signals with mismatch detection
@@ -141,15 +142,13 @@ MoodSyncAI/
 
 ---
 
-## 🎯 Optional Features Implemented
+## ✨ Highlights
 
-| Feature | Status |
-|---------|--------|
-| Grad-CAM attention visualisation | ✅ Done |
-| Learned neural fusion layer | ✅ Done |
-| Audio input (3rd modality via Whisper) | ✅ Done |
-| Deployment on HuggingFace Spaces | ✅ Done |
-| Webcam / real-time video | ❌ Not implemented |
+- 🔍 **Grad-CAM explainability** — visualises which facial regions drive the emotion prediction
+- 🧠 **Learned neural fusion** — a trained MLP combines visual + text embeddings for smarter alignment detection
+- 🎙️ **Three-modality support** — face, text, and audio all processed in a single pipeline via Whisper
+- 📷 **Live webcam capture** — real-time snapshot analysis without needing to upload a photo
+- 🚀 **Deployed & publicly accessible** on HuggingFace Spaces
 
 ---
 
