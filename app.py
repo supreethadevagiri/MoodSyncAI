@@ -141,126 +141,428 @@ EXAMPLES = [
 
 # ── Custom CSS ────────────────────────────────────────────────────────────────
 CUSTOM_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400&display=swap');
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; }
 
 body, .gradio-container {
-    font-family: 'DM Sans', sans-serif !important;
+    font-family: 'Syne', sans-serif !important;
+    background: #07080d !important;
+    color: #e8e6f0 !important;
+    min-height: 100vh;
 }
 
-.mood-header {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    border-radius: 16px;
-    padding: 28px 36px;
-    margin-bottom: 8px;
-    border: 1px solid rgba(255,255,255,0.08);
-}
-.mood-header h1 {
-    font-size: 2.2rem !important;
-    font-weight: 600 !important;
-    color: #ffffff !important;
-    margin: 0 0 6px 0 !important;
-    letter-spacing: -0.5px;
-}
-.mood-header p {
-    color: #94a3b8 !important;
-    font-size: 0.95rem !important;
-    margin: 0 !important;
-    line-height: 1.5;
+.gradio-container {
+    max-width: 1180px !important;
+    margin: 0 auto !important;
+    padding: 0 24px 60px !important;
 }
 
-.section-label {
-    font-size: 0.72rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.12em !important;
-    text-transform: uppercase !important;
-    color: #64748b !important;
-    margin-bottom: 10px !important;
+/* ── Animated mesh background ── */
+.gradio-container::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 80% 60% at 10% 10%, rgba(91,33,182,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 80%, rgba(6,182,212,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(236,72,153,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
 }
 
-.example-btn {
-    font-size: 0.82rem !important;
-    padding: 6px 14px !important;
-    border-radius: 20px !important;
-    border: 1px solid #4f46e5 !important;
-    background: #eef2ff !important;
-    color: #3730a3 !important;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-.example-btn:hover {
-    background: #c7d2fe !important;
-    border-color: #4f46e5 !important;
-    color: #1e1b4b !important;
+/* ── Header ── */
+.msai-header {
+    position: relative;
+    padding: 56px 0 40px;
+    text-align: center;
+    overflow: hidden;
 }
 
-button.lg.primary {
-    background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
-    border: none !important;
-    border-radius: 10px !important;
+.msai-header-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #7c3aed;
+    background: rgba(124,58,237,0.1);
+    border: 1px solid rgba(124,58,237,0.25);
+    border-radius: 100px;
+    padding: 6px 16px;
+    margin-bottom: 22px;
+    animation: fadeSlideDown 0.6s ease both;
+}
+
+.msai-header-eyebrow::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #7c3aed;
+    box-shadow: 0 0 8px #7c3aed;
+    animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.msai-title {
+    font-size: clamp(2.8rem, 6vw, 5rem) !important;
+    font-weight: 800 !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.03em !important;
+    margin: 0 0 18px !important;
+    background: linear-gradient(135deg, #ffffff 0%, #c4b5fd 40%, #67e8f9 100%);
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    animation: fadeSlideDown 0.7s 0.1s ease both;
+}
+
+.msai-subtitle {
     font-size: 1rem !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.02em !important;
-    box-shadow: 0 4px 14px rgba(99,102,241,0.35) !important;
-    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
-}
-button.lg.primary:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 6px 20px rgba(99,102,241,0.45) !important;
+    color: #6b7280 !important;
+    font-weight: 400 !important;
+    max-width: 520px;
+    margin: 0 auto !important;
+    line-height: 1.7 !important;
+    animation: fadeSlideDown 0.7s 0.2s ease both;
 }
 
-.divider {
+.msai-subtitle strong {
+    color: #a78bfa;
+    font-weight: 600;
+}
+
+@keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Divider ── */
+.msai-divider {
     border: none;
-    border-top: 1px solid #e2e8f0;
-    margin: 8px 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(124,58,237,0.3), transparent);
+    margin: 8px 0 32px;
 }
 
-textarea[data-testid="textbox"] {
+/* ── Section Labels ── */
+.msai-section-label {
     font-family: 'DM Mono', monospace !important;
-    font-size: 0.9rem !important;
+    font-size: 0.65rem !important;
+    font-weight: 400 !important;
+    letter-spacing: 0.2em !important;
+    text-transform: uppercase !important;
+    color: #4b5563 !important;
+    margin: 0 0 20px !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.history-section table {
-    font-size: 0.85rem !important;
+.msai-section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(75,85,99,0.4), transparent);
+}
+
+/* ── Cards / Panels ── */
+.msai-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 28px;
+    backdrop-filter: blur(12px);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.msai-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.msai-card:hover {
+    border-color: rgba(124,58,237,0.2);
+    box-shadow: 0 8px 40px rgba(124,58,237,0.08);
+}
+
+/* ── Inputs ── */
+.gradio-container input,
+.gradio-container textarea {
+    background: rgba(255,255,255,0.03) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 12px !important;
+    color: #e8e6f0 !important;
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.88rem !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.gradio-container input:focus,
+.gradio-container textarea:focus {
+    border-color: rgba(124,58,237,0.5) !important;
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.1) !important;
+    outline: none !important;
+}
+
+/* ── Image upload ── */
+.gradio-container .image-container,
+.gradio-container [data-testid="image"] {
+    border: 2px dashed rgba(124,58,237,0.25) !important;
+    border-radius: 16px !important;
+    background: rgba(124,58,237,0.03) !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.gradio-container .image-container:hover,
+.gradio-container [data-testid="image"]:hover {
+    border-color: rgba(124,58,237,0.5) !important;
+}
+
+/* ── Tabs ── */
+.gradio-container .tab-nav {
+    background: rgba(255,255,255,0.03) !important;
+    border-radius: 12px !important;
+    padding: 4px !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    gap: 4px !important;
+}
+
+.gradio-container .tab-nav button {
+    border-radius: 9px !important;
+    font-family: 'Syne', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    letter-spacing: 0.02em !important;
+    color: #6b7280 !important;
+    transition: all 0.2s ease !important;
+    padding: 8px 18px !important;
+    border: none !important;
+}
+
+.gradio-container .tab-nav button.selected {
+    background: linear-gradient(135deg, #7c3aed, #0891b2) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(124,58,237,0.35) !important;
+}
+
+/* ── Analyse Button ── */
+button.lg.primary,
+.gradio-container button[variant="primary"] {
+    background: linear-gradient(135deg, #7c3aed 0%, #0891b2 100%) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    font-family: 'Syne', sans-serif !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    color: #ffffff !important;
+    padding: 14px 36px !important;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+    transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+button.lg.primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+button.lg.primary:hover {
+    transform: translateY(-2px) scale(1.01) !important;
+    box-shadow: 0 8px 32px rgba(124,58,237,0.55), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+}
+
+button.lg.primary:active {
+    transform: translateY(0) scale(0.99) !important;
+}
+
+/* ── Example Buttons ── */
+.example-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem !important;
+    padding: 7px 16px !important;
+    border-radius: 100px !important;
+    border: 1px solid rgba(124,58,237,0.3) !important;
+    background: rgba(124,58,237,0.06) !important;
+    color: #a78bfa !important;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.example-pill:hover {
+    background: rgba(124,58,237,0.15) !important;
+    border-color: rgba(124,58,237,0.6) !important;
+    color: #c4b5fd !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124,58,237,0.2);
+}
+
+/* ── Labels & Headings inside gradio ── */
+.gradio-container label,
+.gradio-container .label-wrap span {
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.7rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.12em !important;
+    color: #4b5563 !important;
+    font-weight: 400 !important;
+}
+
+/* ── Result Textboxes ── */
+.gradio-container textarea[readonly],
+.gradio-container input[readonly] {
+    background: rgba(124,58,237,0.04) !important;
+    border-color: rgba(124,58,237,0.12) !important;
+    color: #c4b5fd !important;
+    font-family: 'DM Mono', monospace !important;
+}
+
+/* ── Output images ── */
+.gradio-container .output-image img {
+    border-radius: 14px !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* ── Markdown headers ── */
+.gradio-container .prose h4,
+.gradio-container h4 {
+    font-family: 'Syne', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    color: #9ca3af !important;
+    margin: 0 0 14px !important;
+}
+
+/* ── History table ── */
+.history-wrap table {
     width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.78rem !important;
+    color: #9ca3af;
 }
 
-.audio-info {
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 10px;
+.history-wrap table th {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.65rem !important;
+    color: #4b5563;
     padding: 10px 14px;
-    font-size: 0.85rem;
-    color: #166534;
-    margin-top: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    text-align: left;
 }
+
+.history-wrap table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: #d1d5db;
+}
+
+.history-wrap table tr:last-child td {
+    border-bottom: none;
+}
+
+.history-wrap table tr:hover td {
+    background: rgba(124,58,237,0.04);
+}
+
+/* ── Audio info box ── */
+.audio-callout {
+    background: rgba(6,182,212,0.06);
+    border: 1px solid rgba(6,182,212,0.18);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: #67e8f9;
+    line-height: 1.6;
+    margin-top: 10px;
+}
+
+.audio-callout strong {
+    color: #a5f3fc;
+    font-weight: 500;
+}
+
+/* ── Result badge area ── */
+.badge-glow textarea {
+    background: rgba(124,58,237,0.06) !important;
+    border-color: rgba(124,58,237,0.25) !important;
+    color: #c4b5fd !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.5); }
+
+/* ── Gradio quirks reset ── */
+.gradio-container .wrap { gap: 0 !important; }
+.gradio-container footer { display: none !important; }
 """
 
 # ── UI ────────────────────────────────────────────────────────────────────────
-with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as demo:
+with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(
+    primary_hue="violet",
+    secondary_hue="cyan",
+    neutral_hue="zinc",
+    font=[gr.themes.GoogleFont("Syne"), "sans-serif"],
+), css=CUSTOM_CSS) as demo:
 
     # ── Header ───────────────────────────────────────────────────────────────
     gr.HTML("""
-    <div class="mood-header">
-        <h1>🎭 MoodSyncAI</h1>
-        <p>
-            Multi-modal emotion &amp; sentiment analyser &nbsp;·&nbsp;
-            Upload a face photo + type text <em>or</em> upload an audio clip
-            to detect hidden emotional mismatches.
+    <div class="msai-header">
+        <div class="msai-header-eyebrow">Multimodal Intelligence · v2.0</div>
+        <h1 class="msai-title">MoodSync AI</h1>
+        <p class="msai-subtitle">
+            Detect hidden emotional mismatches across <strong>face&nbsp;·&nbsp;text&nbsp;·&nbsp;voice</strong>.
+            Upload a photo, add what was said, and let the model reveal what the numbers know.
         </p>
     </div>
     """)
 
-    gr.HTML('<hr class="divider">')
+    gr.HTML('<div class="msai-divider"></div>')
 
     # ── Input row ─────────────────────────────────────────────────────────────
-    with gr.Row():
+    gr.HTML('<p class="msai-section-label">01 &nbsp;/&nbsp; Input</p>')
+
+    with gr.Row(equal_height=True):
 
         # Left column — face photo
         with gr.Column(scale=1):
             image_input = gr.Image(
                 type="pil",
-                label="📷  Upload Face Photo",
-                height=300,
+                label="Upload Face Photo or Use Webcam",
+                height=310,
+                sources=["upload", "webcam"],
             )
 
         # Right column — text OR audio (tabs)
@@ -270,16 +572,16 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as de
                 # Tab 1: typed text (original mode)
                 with gr.Tab("✍️  Type Text"):
                     text_input = gr.Textbox(
-                        label="💬  What did the person say?",
+                        label="What did the person say?",
                         placeholder="Type the sentence here…",
-                        lines=4,
+                        lines=5,
                     )
-                    gr.HTML('<p class="section-label" style="margin-top:8px">⚡ Quick examples</p>')
+                    gr.HTML('<p style="font-family:\'DM Mono\',monospace;font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;color:#4b5563;margin:14px 0 8px;">Quick examples</p>')
                     with gr.Row():
                         for ex in EXAMPLES:
                             gr.Button(
                                 ex["label"],
-                                elem_classes=["example-btn"],
+                                elem_classes=["example-pill"],
                                 size="sm",
                             ).click(
                                 fn=lambda t=ex["text"]: t,
@@ -295,27 +597,26 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as de
                         label="Upload a short audio clip (wav / mp3 / m4a)",
                     )
                     gr.HTML("""
-                    <div class="audio-info">
-                        🎙️ <strong>How it works:</strong> Whisper AI automatically transcribes
-                        what is said in the clip. The transcript feeds into the same
-                        sentiment + fusion pipeline as typed text — giving you a
-                        <strong>3-modality analysis</strong> (face + voice + text).
+                    <div class="audio-callout">
+                        🎙️ <strong>Whisper AI</strong> auto-transcribes your clip.
+                        The transcript feeds directly into the same sentiment + fusion pipeline,
+                        giving you a full <strong>3-modality analysis</strong> — face, voice &amp; text.
                         Max 30 seconds recommended.
                     </div>
                     """)
                     transcript_out = gr.Textbox(
-                        label="📝 Auto-transcript (what Whisper heard)",
+                        label="Auto-transcript (Whisper output)",
                         interactive=False,
                         lines=3,
                         placeholder="Transcript appears here after analysis…",
                     )
 
-            analyse_btn = gr.Button("🔍  Analyse", variant="primary", size="lg")
+            analyse_btn = gr.Button("⚡  Run Analysis", variant="primary", size="lg")
 
-    gr.HTML('<hr class="divider">')
+    gr.HTML('<div class="msai-divider" style="margin-top:32px;"></div>')
 
     # ── Results ───────────────────────────────────────────────────────────────
-    gr.HTML('<p class="section-label">📊 Analysis results</p>')
+    gr.HTML('<p class="msai-section-label">02 &nbsp;/&nbsp; Emotion &amp; Sentiment</p>')
 
     with gr.Row():
         with gr.Column(scale=1):
@@ -328,10 +629,12 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as de
             sentiment_chart_out = gr.Image(label="Sentiment Confidence Chart", height=260)
             sentiment_label_out = gr.Textbox(label="Top Sentiment", interactive=False)
 
-    gr.HTML('<hr class="divider">')
+    gr.HTML('<div class="msai-divider" style="margin-top:32px;"></div>')
+
+    gr.HTML('<p class="msai-section-label">03 &nbsp;/&nbsp; Fusion &amp; Summary</p>')
 
     with gr.Row():
-        with gr.Column(scale=1):
+        with gr.Column(scale=1, elem_classes=["badge-glow"]):
             gr.Markdown("#### 🔀 Fusion Result")
             badge_out = gr.Textbox(
                 label="Mismatch Detection + Fusion Method",
@@ -346,23 +649,25 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(), css=CUSTOM_CSS) as de
                 interactive=False,
             )
 
-    gr.HTML('<hr class="divider">')
+    gr.HTML('<div class="msai-divider" style="margin-top:32px;"></div>')
+
+    gr.HTML('<p class="msai-section-label">04 &nbsp;/&nbsp; Attention Map</p>')
 
     with gr.Row():
         with gr.Column(scale=1):
-            gr.Markdown("#### 🔥 Grad-CAM Attention Map")
+            gr.Markdown("#### 🔥 Grad-CAM Heatmap")
             gradcam_out = gr.Image(
-                label="Face regions that influenced the emotion prediction",
+                label="Face regions driving the emotion prediction",
                 height=300,
             )
 
-    gr.HTML('<hr class="divider">')
+    gr.HTML('<div class="msai-divider" style="margin-top:32px;"></div>')
 
     # ── History ───────────────────────────────────────────────────────────────
-    gr.HTML('<p class="section-label">🕒 Recent analyses (this session)</p>')
+    gr.HTML('<p class="msai-section-label">05 &nbsp;/&nbsp; Session History</p>')
     history_out = gr.Markdown(
         value=_render_history(),
-        elem_classes=["history-section"],
+        elem_classes=["history-wrap"],
     )
 
     # ── Wire button ───────────────────────────────────────────────────────────
