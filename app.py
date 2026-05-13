@@ -32,13 +32,11 @@ def analyse(image, text, audio):
         msg = "Please upload a face photo."
         return None, msg, None, msg, msg, msg, None, _render_history(), ""
 
-    # ── Audio transcription (if audio provided and text box is empty) ─────────
     transcript_display = ""
     if audio is not None:
         transcription = transcribe_audio(audio)
         if transcription["error"] is None and transcription["transcript"]:
             transcript_display = transcription["transcript"]
-            # Only override text if the user left the text box empty
             if not text or not text.strip():
                 text = transcript_display
 
@@ -74,7 +72,6 @@ def analyse(image, text, audio):
     fusion_result = fuse(emotion_result, sentiment_result)
     badge = fusion_result["badge"]
 
-    # Fusion method tag
     method = fusion_result.get("method", "rule")
     method_tag = "🧠 Neural Fusion" if method == "neural" else "📐 Rule-based Fusion"
     badge_with_method = f"{badge}     [{method_tag}]"
@@ -111,7 +108,6 @@ def analyse(image, text, audio):
 
 
 def _render_history() -> str:
-    """Render the last 3 analyses as a markdown table."""
     if not _history:
         return "_No analyses yet. Run your first analysis above!_"
     rows = ["| # | Text | Source | Emotion | Sentiment | Result |",
@@ -123,33 +119,21 @@ def _render_history() -> str:
     return "\n".join(rows)
 
 
-# ── Example presets ───────────────────────────────────────────────────────────
 EXAMPLES = [
-    {
-        "label": "😊 Happy text",
-        "text": "I am so happy today, everything is going great!",
-    },
-    {
-        "label": "😤 Dismissive colleague",
-        "text": "No, I think the project is going really well.",
-    },
-    {
-        "label": "😰 Anxious reassurance",
-        "text": "Everything is totally fine, I am not stressed at all.",
-    },
+    {"label": "😊 Happy text",        "text": "I am so happy today, everything is going great!"},
+    {"label": "😤 Dismissive colleague","text": "No, I think the project is going really well."},
+    {"label": "😰 Anxious reassurance", "text": "Everything is totally fine, I am not stressed at all."},
 ]
 
-# ── Custom CSS ────────────────────────────────────────────────────────────────
 CUSTOM_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400&display=swap');
 
-/* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; }
 
 body, .gradio-container {
     font-family: 'Syne', sans-serif !important;
     background: #07080d !important;
-    color: #e8e6f0 !important;
+    color: #ffffff !important;
     min-height: 100vh;
 }
 
@@ -159,7 +143,6 @@ body, .gradio-container {
     padding: 0 24px 60px !important;
 }
 
-/* ── Animated mesh background ── */
 .gradio-container::before {
     content: '';
     position: fixed;
@@ -177,7 +160,6 @@ body, .gradio-container {
     position: relative;
     padding: 56px 0 40px;
     text-align: center;
-    overflow: hidden;
 }
 
 .msai-header-eyebrow {
@@ -208,7 +190,7 @@ body, .gradio-container {
 
 @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.85); }
+    50%       { opacity: 0.5; transform: scale(0.85); }
 }
 
 .msai-title {
@@ -226,7 +208,7 @@ body, .gradio-container {
 
 .msai-subtitle {
     font-size: 1rem !important;
-    color: #6b7280 !important;
+    color: #a1a1aa !important;
     font-weight: 400 !important;
     max-width: 520px;
     margin: 0 auto !important;
@@ -234,10 +216,7 @@ body, .gradio-container {
     animation: fadeSlideDown 0.7s 0.2s ease both;
 }
 
-.msai-subtitle strong {
-    color: #a78bfa;
-    font-weight: 600;
-}
+.msai-subtitle strong { color: #a78bfa; font-weight: 600; }
 
 @keyframes fadeSlideDown {
     from { opacity: 0; transform: translateY(-16px); }
@@ -252,14 +231,14 @@ body, .gradio-container {
     margin: 8px 0 32px;
 }
 
-/* ── Section Labels ── */
+/* ── Section labels (01 / Input etc.) ── */
 .msai-section-label {
     font-family: 'DM Mono', monospace !important;
     font-size: 0.65rem !important;
     font-weight: 400 !important;
     letter-spacing: 0.2em !important;
     text-transform: uppercase !important;
-    color: #4b5563 !important;
+    color: #71717a !important;
     margin: 0 0 20px !important;
     display: flex;
     align-items: center;
@@ -270,33 +249,24 @@ body, .gradio-container {
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(75,85,99,0.4), transparent);
+    background: linear-gradient(90deg, rgba(113,113,122,0.4), transparent);
 }
 
-/* ── Cards / Panels ── */
-.msai-card {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 20px;
-    padding: 28px;
-    backdrop-filter: blur(12px);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.msai-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 20px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
-    pointer-events: none;
-}
-
-.msai-card:hover {
-    border-color: rgba(124,58,237,0.2);
-    box-shadow: 0 8px 40px rgba(124,58,237,0.08);
+/* ── Markdown section headers (#### 👁️ Visual Emotion etc.) ── */
+.gradio-container .prose h4,
+.gradio-container .md h4,
+.gradio-container h4 {
+    font-family:    'Syne', sans-serif !important;
+    font-weight:    800 !important;
+    font-size:      1.1rem !important;
+    letter-spacing: 0.02em !important;
+    text-transform: uppercase !important;
+    color:          #ffffff !important;
+    margin:         0 0 16px !important;
+    padding:        0 !important;
+    background:     transparent !important;
+    border:         none !important;
+    line-height:    1.3 !important;
 }
 
 /* ── Inputs ── */
@@ -305,7 +275,7 @@ body, .gradio-container {
     background: rgba(255,255,255,0.03) !important;
     border: 1px solid rgba(255,255,255,0.08) !important;
     border-radius: 12px !important;
-    color: #e8e6f0 !important;
+    color: #ffffff !important;
     font-family: 'DM Mono', monospace !important;
     font-size: 0.88rem !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
@@ -347,10 +317,11 @@ body, .gradio-container {
     font-weight: 600 !important;
     font-size: 0.82rem !important;
     letter-spacing: 0.02em !important;
-    color: #6b7280 !important;
+    color: #a1a1aa !important;
     transition: all 0.2s ease !important;
     padding: 8px 18px !important;
     border: none !important;
+    background: transparent !important;
 }
 
 .gradio-container .tab-nav button.selected {
@@ -372,30 +343,20 @@ button.lg.primary,
     text-transform: uppercase !important;
     color: #ffffff !important;
     padding: 14px 36px !important;
-    box-shadow: 0 4px 20px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+    box-shadow: 0 4px 20px rgba(124,58,237,0.4) !important;
     transition: transform 0.18s ease, box-shadow 0.18s ease !important;
-    position: relative !important;
-    overflow: hidden !important;
-}
-
-button.lg.primary::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-    pointer-events: none;
 }
 
 button.lg.primary:hover {
     transform: translateY(-2px) scale(1.01) !important;
-    box-shadow: 0 8px 32px rgba(124,58,237,0.55), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+    box-shadow: 0 8px 32px rgba(124,58,237,0.55) !important;
 }
 
 button.lg.primary:active {
     transform: translateY(0) scale(0.99) !important;
 }
 
-/* ── Example Buttons ── */
+/* ── Example pills ── */
 .example-pill {
     display: inline-flex;
     align-items: center;
@@ -420,24 +381,42 @@ button.lg.primary:active {
     box-shadow: 0 4px 12px rgba(124,58,237,0.2);
 }
 
-/* ── Labels & Headings inside gradio ── */
-.gradio-container label,
-.gradio-container .label-wrap span {
-    font-family: 'DM Mono', monospace !important;
-    font-size: 0.7rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.12em !important;
-    color: #4b5563 !important;
-    font-weight: 400 !important;
+/* ══════════════════════════════════════════════════════
+   LABEL FIX
+   Strip the Gradio 5 purple pill from every field label.
+   Field labels (the small ones under each widget) → white mono text.
+   Does NOT touch h4 headers (handled separately above).
+══════════════════════════════════════════════════════ */
+.gradio-container .label-wrap,
+.gradio-container .label-wrap * {
+    background:       transparent !important;
+    background-color: transparent !important;
+    border:           none !important;
+    box-shadow:       none !important;
+    border-radius:    0 !important;
+    padding:          0 !important;
+    margin:           0 !important;
 }
 
-/* ── Result Textboxes ── */
+.gradio-container .label-wrap span,
+.gradio-container .label-wrap > span {
+    color:          #ffffff !important;
+    font-family:    'DM Mono', monospace !important;
+    font-size:      0.68rem !important;
+    font-weight:    400 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.14em !important;
+    display:        block !important;
+    margin-bottom:  4px !important;
+}
+
+/* ── Read-only result textboxes ── */
 .gradio-container textarea[readonly],
 .gradio-container input[readonly] {
-    background: rgba(124,58,237,0.04) !important;
+    background:   rgba(124,58,237,0.04) !important;
     border-color: rgba(124,58,237,0.12) !important;
-    color: #c4b5fd !important;
-    font-family: 'DM Mono', monospace !important;
+    color:        #e2e8f0 !important;
+    font-family:  'DM Mono', monospace !important;
 }
 
 /* ── Output images ── */
@@ -446,32 +425,19 @@ button.lg.primary:active {
     border: 1px solid rgba(255,255,255,0.06) !important;
 }
 
-/* ── Markdown headers ── */
-.gradio-container .prose h4,
-.gradio-container h4 {
-    font-family: 'Syne', sans-serif !important;
-    font-weight: 700 !important;
-    font-size: 0.82rem !important;
-    letter-spacing: 0.06em !important;
-    text-transform: uppercase !important;
-    color: #9ca3af !important;
-    margin: 0 0 14px !important;
-}
-
 /* ── History table ── */
 .history-wrap table {
     width: 100%;
     border-collapse: collapse;
     font-family: 'DM Mono', monospace !important;
     font-size: 0.78rem !important;
-    color: #9ca3af;
 }
 
 .history-wrap table th {
     text-transform: uppercase;
     letter-spacing: 0.1em;
     font-size: 0.65rem !important;
-    color: #4b5563;
+    color: #71717a;
     padding: 10px 14px;
     border-bottom: 1px solid rgba(255,255,255,0.05);
     text-align: left;
@@ -480,18 +446,13 @@ button.lg.primary:active {
 .history-wrap table td {
     padding: 10px 14px;
     border-bottom: 1px solid rgba(255,255,255,0.03);
-    color: #d1d5db;
+    color: #e4e4e7;
 }
 
-.history-wrap table tr:last-child td {
-    border-bottom: none;
-}
+.history-wrap table tr:last-child td { border-bottom: none; }
+.history-wrap table tr:hover td { background: rgba(124,58,237,0.04); }
 
-.history-wrap table tr:hover td {
-    background: rgba(124,58,237,0.04);
-}
-
-/* ── Audio info box ── */
+/* ── Audio callout ── */
 .audio-callout {
     background: rgba(6,182,212,0.06);
     border: 1px solid rgba(6,182,212,0.18);
@@ -504,18 +465,15 @@ button.lg.primary:active {
     margin-top: 10px;
 }
 
-.audio-callout strong {
-    color: #a5f3fc;
-    font-weight: 500;
-}
+.audio-callout strong { color: #a5f3fc; font-weight: 500; }
 
-/* ── Result badge area ── */
+/* ── Fusion badge ── */
 .badge-glow textarea {
-    background: rgba(124,58,237,0.06) !important;
+    background:   rgba(124,58,237,0.06) !important;
     border-color: rgba(124,58,237,0.25) !important;
-    color: #c4b5fd !important;
-    font-size: 0.95rem !important;
-    font-weight: 600 !important;
+    color:        #c4b5fd !important;
+    font-size:    0.95rem !important;
+    font-weight:  600 !important;
 }
 
 /* ── Scrollbar ── */
@@ -524,7 +482,7 @@ button.lg.primary:active {
 ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.5); }
 
-/* ── Gradio quirks reset ── */
+/* ── Gradio quirks ── */
 .gradio-container .wrap { gap: 0 !important; }
 .gradio-container footer { display: none !important; }
 """
@@ -551,12 +509,11 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(
 
     gr.HTML('<div class="msai-divider"></div>')
 
-    # ── Input row ─────────────────────────────────────────────────────────────
+    # ── Input ─────────────────────────────────────────────────────────────────
     gr.HTML('<p class="msai-section-label">01 &nbsp;/&nbsp; Input</p>')
 
     with gr.Row(equal_height=True):
 
-        # Left column — face photo
         with gr.Column(scale=1):
             image_input = gr.Image(
                 type="pil",
@@ -565,18 +522,16 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(
                 sources=["upload", "webcam"],
             )
 
-        # Right column — text OR audio (tabs)
         with gr.Column(scale=1):
             with gr.Tabs():
 
-                # Tab 1: typed text (original mode)
                 with gr.Tab("✍️  Type Text"):
                     text_input = gr.Textbox(
                         label="What did the person say?",
                         placeholder="Type the sentence here…",
                         lines=5,
                     )
-                    gr.HTML('<p style="font-family:\'DM Mono\',monospace;font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;color:#4b5563;margin:14px 0 8px;">Quick examples</p>')
+                    gr.HTML('<p style="font-family:\'DM Mono\',monospace;font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;margin:14px 0 8px;">Quick examples</p>')
                     with gr.Row():
                         for ex in EXAMPLES:
                             gr.Button(
@@ -590,7 +545,6 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(
                                 queue=False,
                             )
 
-                # Tab 2: audio upload (new 3rd modality)
                 with gr.Tab("🎙️  Upload Audio"):
                     audio_input = gr.Audio(
                         type="filepath",
@@ -615,7 +569,7 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(
 
     gr.HTML('<div class="msai-divider" style="margin-top:32px;"></div>')
 
-    # ── Results ───────────────────────────────────────────────────────────────
+    # ── Emotion & Sentiment ───────────────────────────────────────────────────
     gr.HTML('<p class="msai-section-label">02 &nbsp;/&nbsp; Emotion &amp; Sentiment</p>')
 
     with gr.Row():
@@ -631,6 +585,7 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(
 
     gr.HTML('<div class="msai-divider" style="margin-top:32px;"></div>')
 
+    # ── Fusion & Summary ──────────────────────────────────────────────────────
     gr.HTML('<p class="msai-section-label">03 &nbsp;/&nbsp; Fusion &amp; Summary</p>')
 
     with gr.Row():
@@ -651,6 +606,7 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(
 
     gr.HTML('<div class="msai-divider" style="margin-top:32px;"></div>')
 
+    # ── Attention Map ─────────────────────────────────────────────────────────
     gr.HTML('<p class="msai-section-label">04 &nbsp;/&nbsp; Attention Map</p>')
 
     with gr.Row():
@@ -670,7 +626,7 @@ with gr.Blocks(title="MoodSyncAI", theme=gr.themes.Soft(
         elem_classes=["history-wrap"],
     )
 
-    # ── Wire button ───────────────────────────────────────────────────────────
+    # ── Wire ──────────────────────────────────────────────────────────────────
     analyse_btn.click(
         fn=analyse,
         inputs=[image_input, text_input, audio_input],
